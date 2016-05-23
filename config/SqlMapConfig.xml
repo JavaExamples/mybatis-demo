@@ -1,0 +1,62 @@
+<!DOCTYPE configuration
+PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+	<!-- 属性定义 加载一个properties文件 在 properties标签 中配置属性值 -->
+	<properties resource="db.properties">
+		<!-- <property name="" value=""/> -->
+	</properties>
+
+	<!-- 全局配置参数 -->
+	<settings>
+		<!-- 延迟加载总开关 -->
+		<setting name="lazyLoadingEnabled" value="true" />	
+		<!-- 设置按需加载 -->
+		<setting name="aggressiveLazyLoading" value="false" />
+		<!-- 开启二级缓存 -->
+		<setting name="cacheEnabled" value="true"/>
+	</settings>
+
+
+	<!-- 定义 别名 -->
+	<typeAliases>
+		<!-- 单个别名的定义 alias：别名，type：别名映射的类型 -->
+		<!-- <typeAlias type="cn.demo.mybatis.po.User" alias="user"/> -->
+		<!-- 批量别名定义 指定包路径，自动扫描包下边的pojo，定义别名，别名默认为类名（首字母小写或大写） -->
+		<package name="cn.demo.mybatis.po" />
+
+	</typeAliases>
+
+	<!-- 和spring整合后 environments配置将废除 -->
+	<environments default="development">
+		<environment id="development">
+			<!-- 使用jdbc事务管理 -->
+			<transactionManager type="JDBC" />
+			<!-- 数据库连接池 -->
+			<dataSource type="POOLED">
+				<property name="driver" value="${jdbc.driver}" />
+				<property name="url" value="${jdbc.url}" />
+				<property name="username" value="${jdbc.username}" />
+				<property name="password" value="${jdbc.password}" />
+			</dataSource>
+		</environment>
+	</environments>
+
+	<!--加载mapper映射 如果将和spring整合后，可以使用整合包中提供的mapper扫描器，此处的mappers不用配置了。 -->
+	<mappers>
+		<!-- 通过resource引用mapper的映射文件 -->
+		<!-- <mapper resource="sqlmap/User.xml" /> -->
+		<!-- <mapper resource="mapper/UserMapper.xml" /> -->
+		<!-- 通过class引用mapper接口 class：配置mapper接口全限定名 要求：需要mapper.xml和mapper.java同名并且在一个目录 
+			中 -->
+		<!-- <mapper class="cn.demo.mybatis.mapper.UserMapper"/> -->
+		<!-- 代理批量mapper配置 通过package进行自动扫描包下边的mapper接口， 要求：需要mapper.xml和mapper.java同名并且在一个目录 
+			中 -->
+		<package name="cn.demo.mybatis.mapper" />
+
+
+	</mappers>
+
+
+</configuration>

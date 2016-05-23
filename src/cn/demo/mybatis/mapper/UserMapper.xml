@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace命名空间，为了对sql语句进行隔离，方便管理 ，mapper开发dao方式，使用namespace有特殊作用 mapper代理开发时将namespace指定为mapper接口的全限定名 -->
+<mapper namespace="cn.demo.mybatis.mapper.UserMapper">
+	<!-- 在mapper.xml文件中配置很多的sql语句，执行每个sql语句时，封装为MappedStatement对象 mapper.xml以statement为单位管理sql语句 -->
+	<!-- 开启二级缓存 -->
+	<!-- 单位：毫秒 -->
+	<cache type="org.mybatis.caches.ehcache.EhcacheCache">
+		<property name="timeToIdleSeconds" value="12000" />
+		<property name="timeToLiveSeconds" value="3600" />
+		<!-- 同ehcache参数maxElementsInMemory -->
+		<property name="maxEntriesLocalHeap" value="1000" />
+		<!-- 同ehcache参数maxElementsOnDisk -->
+		<property name="maxEntriesLocalDisk" value="10000000" />
+		<property name="memoryStoreEvictionPolicy" value="LRU" />
+	</cache>
+	<!-- 将用户查询条件定义为sql片段 建议对单表的查询条件单独抽取sql片段，提高公用性 注意：不要将where标签放在sql片段 -->
+	<sql id="query_user_where">
+		<!-- 如果 userQueryVo中传入查询条件，再进行sql拼接 -->
+		<!-- test中userCustom.username表示从userQueryVo读取属性值 -->
+		<if test="userCustom!=null">
+			<if test="userCustom.username!=null and userCustom.username!=''">
+				and username like '%${userCustom.username}%'
+			</if>
+			<if test="userCustom.sex!=null and userCustom.sex!=''">
+				and sex = #{userCustom.sex}
+			</if>
+
+			<!-- 还有很的查询条件 -->
+		</if>
+		<if test="ids!=null">
+			<!-- 根据id集合查询用户信息 -->
+			<!-- 最终拼接的效果： SELECT id ,username ,birthday FROM USER WHERE username LIKE 
+				'%小明%' AND id IN (16,22,25) collection：集合的属性 open：开始循环拼接的串 close：结束循环拼接的串 
+				item：每次循环取到的对象 separator：每两次循环中间拼接的串 -->
+			<foreach collection="ids" open=" AND id IN ( " close=")"
+				item="id" separator=",">
+				#{id}
+			</foreach>
+			<!-- SELECT id ,username ,birthday FROM USER WHERE username LIKE '%小明%' 
+				AND (id = 16 OR id = 22 OR id = 25) <foreach collection="ids" open=" AND 
+				( " close=")" item="id" separator="OR"> id = #{id} </foreach> -->
+		</if>
+	</sql>
+
+	<!-- 定义resultMap，列名和属性名映射配置 id：mapper.xml中的唯一标识 type：最终要映射的pojo类型 -->
+	<resultMap id="userListResultMap" type="user">
+		<!-- 列名 id_,username_,birthday_ id：要映射结果集的唯 一标识 ，称为主键 column：结果集的列名 property：type指定的哪个属性中 -->
+		<id column="id_" property="id" />
+		<!-- result就是普通列的映射配置 -->
+		<result column="username_" property="username" />
+		<result column="birthday_" property="birthday" />
+
+	</resultMap>
+
+	<!-- 根据id查询用户信息 -->
+	<!-- id：唯一标识 一个statement #{}：表示 一个占位符，如果#{}中传入简单类型的参数，#{}中的名称随意 parameterType：输入 
+		参数的类型，通过#{}接收parameterType输入 的参数 resultType：输出结果 类型，不管返回是多条还是单条，指定单条记录映射的pojo类型 -->
+	<select id="findUserById" parameterType="int" resultType="user">
+		SELECT
+		* FROM USER WHERE id= #{id}
+
+	</select>
+
+	<!-- 根据用户名称查询用户信息，可能返回多条 ${}：表示sql的拼接，通过${}接收参数，将参数的内容不加任何修饰拼接在sql中。 -->
+	<select id="findUserByName" parameterType="java.lang.String"
+		resultType="cn.demo.mybatis.po.User">
+		select * from user where username like '%${value}%'
+	</select>
+
+	<!-- 自定义查询条件查询用户的信息 parameterType：指定包装类型 %${userCustom.username}%：userCustom是userQueryVo中的属性，通过OGNL获取属性的值 -->
+	<select id="findUserList" parameterType="userQueryVo"
+		resultType="user">
+
+		select id,username,birthday from user
+		<!-- where标签相当 于where关键字，可以自动去除第一个and -->
+		<where>
+			<!-- 引用sql片段，如果sql片段和引用处不在同一个mapper必须前边加namespace -->
+			<include refid="query_user_where"></include>
+			<!-- 下边还有很其它的条件 -->
+			<!-- <include refid="其它的sql片段"></include> -->
+		</where>
+
+
+
+	</select>
+
+	<!-- 使用resultMap作结果映射 resultMap：如果引用resultMap的位置和resultMap的定义在同一个mapper.xml， 
+		直接使用resultMap的id，如果不在同一个mapper.xml要在resultMap的id前边加namespace -->
+	<select id="findUserListResultMap" parameterType="userQueryVo"
+		resultMap="userListResultMap">
+
+		select id id_,username username_,birthday birthday_ from
+		user where username
+		like '%${userCustom.username}%'
+	</select>
+
+	<!-- 输出简单类型 功能：自定义查询条件，返回查询记录个数，通常用于实现 查询分页 -->
+	<select id="findUserCount" parameterType="userQueryVo"
+		resultType="int">
+		select count(*) from user
+		<!-- where标签相当 于where关键字，可以自动去除第一个and -->
+		<where>
+			<!-- 引用sql片段，如果sql片段和引用处不在同一个mapper必须前边加namespace -->
+			<include refid="query_user_where"></include>
+			<!-- 下边还有很其它的条件 -->
+			<!-- <include refid="其它的sql片段"></include> -->
+		</where>
+	</select>
+
+	<!-- 添加用户 parameterType：输入 参数的类型，User对象 包括 username,birthday,sex,address 
+		#{}接收pojo数据，可以使用OGNL解析出pojo的属性值 #{username}表示从parameterType中获取pojo的属性值 selectKey：用于进行主键返回，定义了获取主键值的sql 
+		order：设置selectKey中sql执行的顺序，相对于insert语句来说 keyProperty：将主键值设置到哪个属性 resultType：select 
+		LAST_INSERT_ID()的结果 类型 -->
+	<insert id="insertUser" parameterType="cn.demo.mybatis.po.User">
+		<selectKey keyProperty="id" order="AFTER" resultType="int">
+			select
+			LAST_INSERT_ID()
+		</selectKey>
+
+		INSERT INTO USER(username,birthday,sex,address)
+		VALUES(#{username},#{birthday},#{sex},#{address})
+	</insert>
+
+	<!-- mysql的uuid生成主键 -->
+	<!-- <insert id="insertUser" parameterType="cn.demo.mybatis.po.User"> <selectKey 
+		keyProperty="id" order="BEFORE" resultType="string"> select uuid() </selectKey> 
+		INSERT INTO USER(id,username,birthday,sex,address) VALUES(#{id},#{username},#{birthday},#{sex},#{address}) 
+		</insert> -->
+
+	<!-- oracle 在执行insert之前执行select 序列.nextval() from dual取出序列最大值，将值设置到user对象 
+		的id属性 -->
+	<!-- <insert id="insertUser" parameterType="cn.demo.mybatis.po.User"> <selectKey 
+		keyProperty="id" order="BEFORE" resultType="int"> select 序列.nextval() from 
+		dual </selectKey> INSERT INTO USER(id,username,birthday,sex,address) VALUES(#{id},#{username},#{birthday},#{sex},#{address}) 
+		</insert> -->
+
+	<!-- 用户删除 -->
+	<delete id="deleteUser" parameterType="int">
+		delete from user where
+		id=#{id}
+	</delete>
+	<!-- 用户更新 要求：传入的user对象中包括 id属性值 -->
+	<update id="updateUser" parameterType="cn.demo.mybatis.po.User"
+		flushCache="false">
+		update user set
+		username=#{username},birthday=#{birthday},sex=#{sex},address=#{address}
+		where id=#{id}
+	</update>
+
+</mapper>
+
